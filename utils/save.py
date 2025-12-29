@@ -44,8 +44,8 @@ def save_metrics(MODEL_NAME, DATASET_NAME, current_time, results, f1_score, tn, 
             'train_samples': len(train_df),
             'val_samples': len(val_df),
             'test_samples': len(test_df),
-            'fake_count': int((df['label'] == 0).sum()),
-            'real_count': int((df['label'] == 1).sum())
+            'fake_count': int((df['label'] == 1).sum()), # 1 = Fake
+            'real_count': int((df['label'] == 0).sum())  # 0 = Real
         }
     }
 
@@ -137,9 +137,9 @@ def save_pred(test_dir, file_dir, plot_dir, y_true, y_pred, y_pred_probs, result
 
     plt.figure(figsize=(12, 6))
 
-    # Plot for fake samples (label 0)
+    # Plot for fake samples (label 1)
     plt.subplot(1, 2, 1)
-    fake_probs = y_pred_probs[y_true == 0]
+    fake_probs = y_pred_probs[y_true == 1]  # <--- Correct: 1 is Fake
     plt.hist(fake_probs, bins=50, color='red', alpha=0.7, edgecolor='black')
     plt.axvline(x=0.5, color='black', linestyle='--', linewidth=2, label='Threshold = 0.5')
     plt.xlabel('Predicted Probability', fontsize=11)
@@ -148,9 +148,9 @@ def save_pred(test_dir, file_dir, plot_dir, y_true, y_pred, y_pred_probs, result
     plt.legend()
     plt.grid(True, alpha=0.3)
 
-    # Plot for real samples (label 1)
+    # Plot for real samples (label 0)
     plt.subplot(1, 2, 2)
-    real_probs = y_pred_probs[y_true == 1]
+    real_probs = y_pred_probs[y_true == 0]  # <--- FIXED: 0 is Real (Was 1)
     plt.hist(real_probs, bins=50, color='green', alpha=0.7, edgecolor='black')
     plt.axvline(x=0.5, color='black', linestyle='--', linewidth=2, label='Threshold = 0.5')
     plt.xlabel('Predicted Probability', fontsize=11)

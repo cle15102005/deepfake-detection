@@ -2,94 +2,54 @@
 # PREPROCESSING
 # ==========================================
 
-#import modules
+import os
 import tensorflow as tf
-import matplotlib.pyplot as plt
 from keras import applications
-import os   
+import matplotlib.pyplot as plt
 
-# Configuration
 AUTOTUNE = tf.data.AUTOTUNE
 
-print(" Setting up EfficientNet preprocessing pipeline...")
 def load_image(filepath, label):
-    """
-    Load and decode image file.
-    Returns raw image tensor and label.
-    """
     img = tf.io.read_file(filepath)
     img = tf.image.decode_image(img, channels=3, expand_animations=False)
+    img.set_shape([None, None, 3])
     return img, label
 
-def is_valid_image(img, label):
-    """
-    Filter out corrupted images with invalid dimensions.
-    Returns True only if both height and width > 0.
-    """
-    shape = tf.shape(img)
-    return (shape[0] > 0) & (shape[1] > 0)
-
-def preprocess_image(img, label):
-    img.set_shape([None, None, 3])
+def preprocess_image(img, label, model_name):
+    # Resize
     img = tf.image.resize(img, (224, 224))
     
-    #if 'efficientnet':
-    img = applications.efficientnet.preprocess_input(img)
-    #elif 'xception' 
-    #img = applications.xception.preprocess_input(img)
-    #elif 'mesonet' 
-    #img = img / 255.0
+    # Dynamic Preprocessing based on Model
+    if 'efficientnet' in model_name:
+        img = applications.efficientnet.preprocess_input(img)
+    elif 'xception' in model_name:
+        img = applications.xception.preprocess_input(img)
+    elif 'mesonet' in model_name:
+        img = img / 255.0 # Rescale [0, 1]
         
     return img, label
 
-# Create data set -> train_dataset, val_dataset, test_dataset
-def make_data(train_df, val_df, test_df, BATCH_SIZE):
-    print(" Creating training dataset...")
-    train_dataset = tf.data.Dataset.from_tensor_slices(
-        (train_df['filepath'].values, train_df['label'].values)
-    )
+def make_data(train_df, val_df, test_df, BATCH_SIZE, model_name='efficientnetb0'):
+    print(f" Creating data pipeline for: {model_name}")
 
-    train_dataset = (
-        train_dataset
-        .map(load_image, num_parallel_calls=AUTOTUNE)       # Load images in parallel
-        .filter(is_valid_image)                             # Remove corrupted images
-        .map(preprocess_image, num_parallel_calls=AUTOTUNE) # Preprocess
-        .shuffle(buffer_size=500 )                          # Shuffle for randomness      
-        .batch(BATCH_SIZE)                                  # Create batches
-        .prefetch(buffer_size=AUTOTUNE)                     # Prefetch next batch
-    )
+    # Wrapper to pass model_name to map
+    def preprocess_wrapper(img, label):
+        return preprocess_image(img, label, model_name)
 
-    print(" Creating validation dataset...")
-    validation_dataset = tf.data.Dataset.from_tensor_slices(
-        (val_df['filepath'].values, val_df['label'].values)
-    )
+    def create_ds(df, shuffle=False):
+        ds = tf.data.Dataset.from_tensor_slices((df['filepath'].values, df['label'].values))
+        ds = ds.map(load_image, num_parallel_calls=AUTOTUNE)
+        ds = ds.map(preprocess_wrapper, num_parallel_calls=AUTOTUNE)
+        if shuffle:
+            ds = ds.shuffle(1000)
+        ds = ds.batch(BATCH_SIZE).prefetch(AUTOTUNE)
+        return ds
 
-    validation_dataset = (
-        validation_dataset
-        .map(load_image, num_parallel_calls=AUTOTUNE)
-        .filter(is_valid_image)
-        .map(preprocess_image, num_parallel_calls=AUTOTUNE)
-        .batch(BATCH_SIZE)
-        .prefetch(buffer_size=AUTOTUNE)
-    )
+    train_ds = create_ds(train_df, shuffle=True)
+    val_ds   = create_ds(val_df)
+    test_ds  = create_ds(test_df)
 
-    print(" Creating test dataset...")
-    test_dataset = tf.data.Dataset.from_tensor_slices(
-        (test_df['filepath'].values, test_df['label'].values)
-    )
-
-    test_dataset = (
-        test_dataset
-        .map(load_image, num_parallel_calls=AUTOTUNE)
-        .filter(is_valid_image)
-        .map(preprocess_image, num_parallel_calls=AUTOTUNE)
-        .batch(BATCH_SIZE)
-        .prefetch(buffer_size=AUTOTUNE)
-    )
-
-    print(" All datasets created successfully!\n")
-
-    return train_dataset, validation_dataset, test_dataset
+    return train_ds, val_ds, test_ds
 
 # Verify the pipeline
 def verify_pipeline(train_dataset, plot_dir, file_dir):
