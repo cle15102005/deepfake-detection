@@ -19,7 +19,7 @@ def plot_history(history, plot_dir, file_dir):
     else:
         plt.plot(history['accuracy'], label='Train Acc', linewidth=2) 
     
-    plt.axvline(x=10, color='red', linestyle='--', alpha=0.7, linewidth=2, label='Fine-tune starts')
+    #plt.axvline(x=10, color='red', linestyle='--', alpha=0.7, linewidth=2, label='Fine-tune starts')
     plt.title('Model AUC - Training History', fontsize=14, fontweight='bold')
     plt.xlabel('Epoch', fontsize=12)
     plt.ylabel('AUC Score', fontsize=12)
@@ -33,7 +33,7 @@ def plot_history(history, plot_dir, file_dir):
     plt.figure(figsize=(10, 6))
     plt.plot(history['accuracy'], label='Train Accuracy', linewidth=2, marker='o', markersize=4)
     plt.plot(history['val_accuracy'], label='Val Accuracy', linewidth=2, marker='s', markersize=4)
-    plt.axvline(x=10, color='red', linestyle='--', alpha=0.7, linewidth=2, label='Fine-tune starts')
+    #plt.axvline(x=10, color='red', linestyle='--', alpha=0.7, linewidth=2, label='Fine-tune starts')
     plt.title('Model Accuracy - Training History', fontsize=14, fontweight='bold')
     plt.xlabel('Epoch', fontsize=12)
     plt.ylabel('Accuracy', fontsize=12)
@@ -47,7 +47,7 @@ def plot_history(history, plot_dir, file_dir):
     plt.figure(figsize=(10, 6))
     plt.plot(history['loss'], label='Train Loss', linewidth=2, marker='o', markersize=4)
     plt.plot(history['val_loss'], label='Val Loss', linewidth=2, marker='s', markersize=4)
-    plt.axvline(x=10, color='red', linestyle='--', alpha=0.7, linewidth=2, label='Fine-tune starts')
+    #plt.axvline(x=10, color='red', linestyle='--', alpha=0.7, linewidth=2, label='Fine-tune starts')
     plt.title('Model Loss - Training History', fontsize=14, fontweight='bold')
     plt.xlabel('Epoch', fontsize=12)
     plt.ylabel('Loss', fontsize=12)
