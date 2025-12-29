@@ -69,7 +69,7 @@ results, tn, fp, fn, tp, fpr, fnr, f1_score, y_true, y_pred, y_pred_probs = main
     model, test_ds, f"{SAVE_DIR}/plot", file_dir, f"{SAVE_DIR}/test"
 )
 
-# --- FIX 2: SAVE METRICS & PREDICTIONS ---
+# SAVE METRICS & PREDICTIONS
 print(" Saving metrics and predictions...")
 save.save_metrics(
     MODEL_NAME, DATASET_NAME, current_time, 

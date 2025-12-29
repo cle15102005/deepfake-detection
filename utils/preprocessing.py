@@ -94,9 +94,9 @@ def verify_pipeline(train_dataset, plot_dir, file_dir):
         img_denorm = (img - img.min()) / (img.max() - img.min())
 
         axes[idx].imshow(img_denorm)
-        axes[idx].set_title(f"Label: {'Real' if label == 1 else 'Fake'}",
+        axes[idx].set_title(f"Label: {'Real' if label == 0 else 'Fake'}",
                         fontsize=12,
-                        color='green' if label == 1 else 'red')
+                        color='green' if label == 0 else 'red')
         axes[idx].axis('off')
 
     plt.tight_layout()
