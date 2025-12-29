@@ -30,7 +30,7 @@ for folder in ['model', 'history', 'plot', 'test']:
 BATCH_SIZE = 32
 LEARNING_RATE = 0.001
 IMAGE_SIZE = (224, 224)
-DROPOUT_RATE = 0.5 if MODEL_NAME == 'xception' else 0.2
+DROPOUT_RATE = 0.5 if MODEL_NAME == 'mesonet' else 0.2
 
 # 1. LOAD DATA
 train_df, val_df, test_df = data_loader.load_datasets(DATA_DIR)
