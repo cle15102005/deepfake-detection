@@ -59,6 +59,10 @@ def save_metrics(MODEL_NAME, DATASET_NAME, current_time, results, f1_score, tn, 
 # SAVE PREDICTIONS
 # ==========================================
 def save_pred(test_dir, file_dir, plot_dir, y_true, y_pred, y_pred_probs, results):
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+    y_pred_probs = np.array(y_pred_probs)
+    
     predictions_path = os.path.join(test_dir, f'test_predictions_{file_dir}.npz')
     np.savez(predictions_path, 
             y_true=y_true, 
