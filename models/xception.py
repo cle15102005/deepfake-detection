@@ -69,7 +69,7 @@ def set_callbacks(model_dir, file_dir, SAVE_DIR, current_time):
     model_checkpoint = callbacks.ModelCheckpoint(
         filepath=save_path,
         monitor='val_loss',
-        mode='max',
+        mode='min',
         save_best_only=True,            # Only save when val_loss improves
         verbose=1
     )
