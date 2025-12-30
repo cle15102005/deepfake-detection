@@ -52,7 +52,7 @@ def set_callbacks(model_dir, file_dir, SAVE_DIR, current_time):
     print(" Setting up training callbacks...\n")
     # 1. Early Stopping - prevents overfitting
     early_stopping = callbacks.EarlyStopping(
-        monitor='val_auc',              # Monitor validation AUC
+        monitor='val_loss',             # Monitor validation loss
         patience=10,                    # Wait 10 epochs before stopping
         mode='max',                     # We want to maximize AUC
         restore_best_weights=True,      # Restore weights from best epoch
