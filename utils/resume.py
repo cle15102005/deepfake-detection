@@ -12,17 +12,17 @@ import preprocessing, main_eval, save
 # ⚙️ CONFIGURATION
 # ==========================================
 
-MODEL_PATH_TO_LOAD   = "save_efficientb0_aug/model/efficientnetb0_ffnormal_20251230_181022.keras"
-HISTORY_PATH_TO_LOAD = "save_efficientb0_aug/history/efficientnetb0_ffnormal_20251230_181022.npy"
+MODEL_PATH_TO_LOAD   = "save_efficientb0_nor/model/efficientnetb0_ffnormal_20251231_020614.keras"
+HISTORY_PATH_TO_LOAD = "save_efficientb0_nor/history/efficientnetb0_ffnormal_20251231_020614.npy"
 
 # 👇 CHECK THIS PATH (Ensure it is correct)
-TEST_DATA_DIR = "TEST/TEST/test_nor" 
+TEST_DATA_DIR = "TEST/TEST/test_aug" 
 
 # ------------------------------------------
 # PARAMETERS
 # ------------------------------------------
 MODEL_NAME      = "efficientnetb0"     
-DATASET_NAME    = 'ffnormal_test_nor' 
+DATASET_NAME    = 'ffnormal_test_aug' 
 BATCH_SIZE      = 32
 IMAGE_SIZE      = (224, 224)
 DROPOUT_RATE    = 0.2 
