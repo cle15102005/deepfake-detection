@@ -65,20 +65,24 @@ def plot_history(history, plot_dir, file_dir):
 def test_evaluate(model, test_dataset, plot_dir, file_dir, test_dir):
     """
     Phase 2: Benchmarking
-    Calculates detailed metrics including TN, FP, FN, TP, FPR, FNR, and F1.
     """
     print("\n" + "="*60)
     print(" EVALUATING MODEL ON TEST SET")
     print("="*60 + "\n")
 
     # Evaluate
+    # Results will be [loss, accuracy, auc, precision, recall]
     results = model.evaluate(test_dataset, verbose=1)
 
-    # Calculate F1 Score manually
-    # results indices: [loss, accuracy, auc, precision, recall]
-    precision = results[3]
-    recall = results[4]
-    f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+    # Safe unpacking
+    precision = results[3] if len(results) > 3 else 0.0
+    recall = results[4] if len(results) > 4 else 0.0
+    
+    # Calculate F1 Score
+    if (precision + recall) > 0:
+        f1_score = 2 * (precision * recall) / (precision + recall)
+    else:
+        f1_score = 0.0
 
     # Collect Predictions
     print(" Collecting predictions...")
@@ -86,17 +90,28 @@ def test_evaluate(model, test_dataset, plot_dir, file_dir, test_dir):
     y_pred_probs = []
 
     for images, labels in test_dataset:
-        y_true.extend(labels.numpy())
+        y_true.extend(labels.numpy().flatten())
+        
         preds = model.predict(images, verbose=0)
         y_pred_probs.extend(preds.flatten())  
 
-    y_true = np.array(y_true)
+    y_true = np.array(y_true).astype(int)
     y_pred_probs = np.array(y_pred_probs)
     y_pred = (y_pred_probs > 0.5).astype(int)
 
     # 1. Confusion Matrix
     cm = confusion_matrix(y_true, y_pred)
-    tn, fp, fn, tp = cm.ravel()
+    
+    # Handle cases where CM is not 2x2 (e.g. only one class in test set)
+    if cm.shape == (2, 2):
+        tn, fp, fn, tp = cm.ravel()
+    else:
+        print("Warning: Confusion Matrix is not 2x2. Dataset might be unbalanced.")
+        # Fallback logic
+        tn, fp, fn, tp = 0, 0, 0, 0
+        try:
+            tn = cm[0,0] # if only negatives exist
+        except: pass
 
     # Calculate Error Rates
     fpr = fp / (fp + tn) if (fp + tn) > 0 else 0
@@ -119,11 +134,15 @@ def test_evaluate(model, test_dataset, plot_dir, file_dir, test_dir):
     print("="*60)
     print(" DETAILED CLASSIFICATION REPORT")
     print("="*60)
-    report = classification_report(y_true, y_pred, target_names=['Real', 'Fake'], digits=4)
-    print(report)
     
-    with open(os.path.join(test_dir, f'classification_report_{file_dir}.txt'), 'w') as f:
-        f.write(report)
+    # Use try-except in case y_true has only 1 class
+    try:
+        report = classification_report(y_true, y_pred, target_names=['Real', 'Fake'], digits=4)
+        print(report)
+        with open(os.path.join(test_dir, f'classification_report_{file_dir}.txt'), 'w') as f:
+            f.write(report)
+    except ValueError as e:
+        print(f"Could not generate classification report: {e}")
     
     print(f"\nConfusion Matrix Breakdown:")
     print(f"  True Negatives (Correctly identified Reals):  {tn:5d}")  

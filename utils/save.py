@@ -5,20 +5,34 @@
 # Import modules
 import json, os
 import numpy as np
+import pandas as pd 
 import matplotlib.pyplot as plt
 
 def save_metrics(MODEL_NAME, DATASET_NAME, current_time, results, f1_score, tn, fp, fn, tp, fpr, fnr, 
                  history, BATCH_SIZE, LEARNING_RATE, IMAGE_SIZE, DROPOUT_RATE, df, train_df, val_df, test_df, test_dir, file_dir):
+    
+    # Safe unpacking of results to avoid IndexError
+    loss_val = float(results[0]) if len(results) > 0 else 0.0
+    acc_val  = float(results[1]) if len(results) > 1 else 0.0
+    auc_val  = float(results[2]) if len(results) > 2 else 0.0
+    prec_val = float(results[3]) if len(results) > 3 else 0.0
+    rec_val  = float(results[4]) if len(results) > 4 else 0.0
+
+    try:
+        labels_numeric = pd.to_numeric(df['label'])
+    except:
+        labels_numeric = df['label'] 
+
     metrics_dict = {
         'model_name': MODEL_NAME,
         'dataset_name': DATASET_NAME,
         'timestamp': current_time,
         'test_metrics': {
-            'loss': float(results[0]),
-            'accuracy': float(results[1]),
-            'auc': float(results[2]),
-            'precision': float(results[3]),
-            'recall': float(results[4]),
+            'loss': loss_val,
+            'accuracy': acc_val,
+            'auc': auc_val,
+            'precision': prec_val,
+            'recall': rec_val,
             'f1_score': float(f1_score)
         },
         'confusion_matrix': {
@@ -32,7 +46,7 @@ def save_metrics(MODEL_NAME, DATASET_NAME, current_time, results, f1_score, tn, 
             'false_negative_rate': float(fnr)
         },
         'training_info': {
-            'total_epochs': len(history['loss']),
+            'total_epochs': len(history.get('loss', [])),
             'batch_size': BATCH_SIZE,
             'initial_learning_rate': LEARNING_RATE,
             'fine_tune_learning_rate': 1e-5,
@@ -44,8 +58,8 @@ def save_metrics(MODEL_NAME, DATASET_NAME, current_time, results, f1_score, tn, 
             'train_samples': len(train_df),
             'val_samples': len(val_df),
             'test_samples': len(test_df),
-            'fake_count': int((df['label'] == 1).sum()), # 1 = Fake
-            'real_count': int((df['label'] == 0).sum())  # 0 = Real
+            'fake_count': int((labels_numeric == 1).sum()), 
+            'real_count': int((labels_numeric == 0).sum())  
         }
     }
 
@@ -63,6 +77,9 @@ def save_pred(test_dir, file_dir, plot_dir, y_true, y_pred, y_pred_probs, result
     y_pred = np.array(y_pred)
     y_pred_probs = np.array(y_pred_probs)
     
+    # Safe Precision access
+    prec_val = float(results[3]) if len(results) > 3 else 0.0
+
     predictions_path = os.path.join(test_dir, f'test_predictions_{file_dir}.npz')
     np.savez(predictions_path, 
             y_true=y_true, 
@@ -116,8 +133,8 @@ def save_pred(test_dir, file_dir, plot_dir, y_true, y_pred, y_pred_probs, result
     plt.figure(figsize=(10, 8))
     plt.plot(recall_curve, precision_curve, color='green', lw=2,
             label=f'PR curve (AP = {avg_precision:.4f})')
-    plt.axhline(y=results[3], color='red', linestyle='--', lw=1.5,
-                label=f'Model Precision @ 0.5 threshold = {results[3]:.4f}')
+    plt.axhline(y=prec_val, color='red', linestyle='--', lw=1.5,
+                label=f'Model Precision @ 0.5 threshold = {prec_val:.4f}')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
     plt.xlabel('Recall', fontsize=12)
@@ -143,25 +160,27 @@ def save_pred(test_dir, file_dir, plot_dir, y_true, y_pred, y_pred_probs, result
 
     # Plot for fake samples (label 1)
     plt.subplot(1, 2, 1)
-    fake_probs = y_pred_probs[y_true == 1]  # <--- Correct: 1 is Fake
-    plt.hist(fake_probs, bins=50, color='red', alpha=0.7, edgecolor='black')
-    plt.axvline(x=0.5, color='black', linestyle='--', linewidth=2, label='Threshold = 0.5')
-    plt.xlabel('Predicted Probability', fontsize=11)
-    plt.ylabel('Count', fontsize=11)
-    plt.title('Distribution of Predictions for FAKE Images', fontsize=12, fontweight='bold')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
+    fake_probs = y_pred_probs[y_true == 1]
+    
+    if len(fake_probs) > 0:
+        plt.hist(fake_probs, bins=50, color='red', alpha=0.7, edgecolor='black')
+        plt.axvline(x=0.5, color='black', linestyle='--', linewidth=2, label='Threshold = 0.5')
+        plt.title('Predictions for FAKE Images', fontsize=12, fontweight='bold')
+        plt.legend()
+    else:
+        plt.title('No FAKE Images found')
 
     # Plot for real samples (label 0)
     plt.subplot(1, 2, 2)
-    real_probs = y_pred_probs[y_true == 0]  # <--- FIXED: 0 is Real (Was 1)
-    plt.hist(real_probs, bins=50, color='green', alpha=0.7, edgecolor='black')
-    plt.axvline(x=0.5, color='black', linestyle='--', linewidth=2, label='Threshold = 0.5')
-    plt.xlabel('Predicted Probability', fontsize=11)
-    plt.ylabel('Count', fontsize=11)
-    plt.title('Distribution of Predictions for REAL Images', fontsize=12, fontweight='bold')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
+    real_probs = y_pred_probs[y_true == 0]
+    
+    if len(real_probs) > 0:
+        plt.hist(real_probs, bins=50, color='green', alpha=0.7, edgecolor='black')
+        plt.axvline(x=0.5, color='black', linestyle='--', linewidth=2, label='Threshold = 0.5')
+        plt.title('Predictions for REAL Images', fontsize=12, fontweight='bold')
+        plt.legend()
+    else:
+        plt.title('No REAL Images found')
 
     plt.tight_layout()
     dist_path = os.path.join(plot_dir, f'prediction_distribution_{file_dir}.png')
