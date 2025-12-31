@@ -54,8 +54,8 @@ def set_callbacks(model_dir, file_dir, SAVE_DIR, current_time):
     early_stopping = callbacks.EarlyStopping(
         monitor='val_loss',             # Monitor validation loss
         patience=10,                    # Wait 10 epochs before stopping
-        mode='max',                     # We want to maximize AUC
-        restore_best_weights=True,      # Restore weights from best epoch
+        mode='min',                     
+        #restore_best_weights=True,      # Restore weights from best epoch
         verbose=1
     )
     print(" Early Stopping: patience=10, monitor=val_auc")
@@ -64,7 +64,7 @@ def set_callbacks(model_dir, file_dir, SAVE_DIR, current_time):
     model_checkpoint = callbacks.ModelCheckpoint(
         filepath=save_path,
         monitor='val_auc',
-        mode='min',
+        mode='max',
         save_best_only=True,            # Only save when val_auc improves
         verbose=1
     )
