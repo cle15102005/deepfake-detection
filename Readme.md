@@ -249,21 +249,17 @@ Pillow>=8.3.0
 ### Quick Start - Inference
 
 ```python
-from keras.models import load_model
-from keras.preprocessing import image
-import numpy as np
+import tensorflow as tf
+from utils.preprocessing import preprocess_image
 
 # Load trained model
-model = load_model('models/efficientnetb0_best.keras')
+model = tf.keras.models.load_model('save/model/efficientnetb0_ffnormal_TIMESTAMP.keras')
 
-# Load and preprocess image
+# Preprocess and predict single image
 img_path = 'test_image.jpg'
-img = image.load_img(img_path, target_size=(224, 224))
-img_array = image.img_to_array(img)
-img_array = np.expand_dims(img_array, axis=0)
-img_array = img_array / 255.0  # Normalize
+img_array = preprocess_image(img_path, model_name='efficientnetb0')
 
-# Predict
+# Get prediction
 prediction = model.predict(img_array)
 result = "FAKE" if prediction[0][0] > 0.5 else "REAL"
 confidence = prediction[0][0] if prediction[0][0] > 0.5 else 1 - prediction[0][0]
@@ -271,50 +267,66 @@ confidence = prediction[0][0] if prediction[0][0] > 0.5 else 1 - prediction[0][0
 print(f"Prediction: {result} (Confidence: {confidence:.2%})")
 ```
 
+### Using the Complete Pipeline
+
+```python
+# Run the entire training and evaluation pipeline
+python main_main.py
+```
+
 ### Data Preprocessing
 
-```bash
-# Extract faces from videos using MTCNN
-python scripts/preprocess_data.py \
-    --input_dir data/videos/ \
-    --output_dir data/processed/ \
-    --frame_interval 5
+Your data should be organized as:
 ```
+FINAL_DATASET/
+└── Normal_Dataset/
+    ├── train/
+    │   ├── real/
+    │   └── fake/
+    ├── val/
+    │   ├── real/
+    │   └── fake/
+    └── test/
+        ├── real/
+        └── fake/
+```
+
+The preprocessing pipeline in `utils/preprocessing.py` handles:
+- Dynamic preprocessing based on model (EfficientNet, Xception, MesoNet)
+- Automatic resizing to 224×224
+- Model-specific normalization
 
 ### Training from Scratch
 
-```bash
-# Train EfficientNetB0
-python train.py \
-    --model efficientnet \
-    --data_dir data/Normal_Dataset/ \
-    --epochs 50 \
-    --batch_size 32 \
-    --learning_rate 0.001
+**Full Pipeline (Recommended)**
+```python
+# Edit configuration in main_main.py
+MODEL_NAME = "efficientnetb0"  # or "xception", "mesonet"
+DATA_DIR = "path/to/FINAL_DATASET/Normal_Dataset/"
 
-# Train Xception
-python train.py \
-    --model xception \
-    --data_dir data/Normal_Dataset/ \
-    --epochs 50 \
-    --batch_size 32
-
-# Train MesoNet
-python train.py \
-    --model mesonet \
-    --data_dir data/Normal_Dataset/ \
-    --epochs 50 \
-    --batch_size 32
+# Run complete training + evaluation
+python main_main.py
 ```
 
-### Evaluation
+This will:
+1. Load and preprocess data
+2. Build the selected model
+3. Train with automatic callbacks
+4. Evaluate on test set
+5. Generate all plots and metrics
+6. Save everything to `save/` directory
 
-```bash
-# Evaluate on test set
-python evaluate.py \
-    --model_path models/efficientnetb0_best.keras \
-    --test_dir data/Normal_Dataset/test/ \
-    --output_dir results/
+**Training Only (Advanced)**
+```python
+from main_train import train_model
+from models import efficientnetb0
+
+# Create model
+model, base_model = efficientnetb0.create_model((224, 224, 3), 0.2, 1)
+
+# Train
+history = train_model(model, base_model, 32, 0.001, 
+                     train_ds, val_ds, callbacks_list, 'efficientnetb0')
 ```
 
 ---
@@ -324,137 +336,173 @@ python evaluate.py \
 ```
 deepfake-detection/
 │
-├── data/
-│   ├── FINAL_DATASET/
-│   │   ├── Normal_Dataset/
-│   │   └── Augmented_Dataset/
-│   └── models/
+├── models/                      # Model architecture implementations
+│   ├── efficientnetb0.py       # EfficientNetB0 architecture
+│   ├── xception.py             # Xception architecture
+│   └── mesonet.py              # MesoNet architecture
 │
-├── src/
-│   ├── models/
-│   │   ├── efficientnet.py
-│   │   ├── xception.py
-│   │   └── mesonet.py
-│   │
-│   ├── preprocessing/
-│   │   ├── face_extraction.py
-│   │   └── data_augmentation.py
-│   │
-│   ├── training/
-│   │   ├── train.py
-│   │   └── callbacks.py
-│   │
-│   └── evaluation/
-│       ├── evaluate.py
-│       └── metrics.py
+├── utils/                       # Utility scripts
+│   ├── data_loader.py          # Dataset loading and batching
+│   ├── main_eval.py            # Model evaluation script
+│   ├── preprocessing.py        # Image preprocessing and face extraction
+│   └── save.py                 # Model checkpoint saving utilities
 │
-├── notebooks/
-│   ├── 01_data_exploration.ipynb
-│   ├── 02_model_training.ipynb
-│   └── 03_results_analysis.ipynb
-│
-├── scripts/
-│   ├── preprocess_data.py
-│   ├── train_all_models.sh
-│   └── evaluate_models.sh
-│
-├── results/
-│   ├── plots/
-│   ├── confusion_matrices/
-│   └── classification_reports/
-│
-├── docs/
-│   ├── project_report.pdf
-│   └── presentation.pdf
-│
-├── requirements.txt
-├── README.md
-└── LICENSE
+├── main_train.py               # Main training script
+├── main_main.py                # Main execution pipeline
+├── Readme.md                   # This file
+└── requirements.txt            # Python dependencies
 ```
+
+### Quick Navigation
+
+- **Training**: Use `main_train.py` to train models
+- **Evaluation**: Use `utils/main_eval.py` for testing
+- **Models**: All three architectures in `models/` directory
+- **Data Processing**: `utils/preprocessing.py` handles face extraction
 
 ---
 
 ## 🎓 Training
 
-### Training Configuration
+### Configuration (in `main_main.py`)
 
 ```python
+# Model Selection
+MODEL_NAME = "efficientnetb0"  # Options: 'efficientnetb0', 'xception', 'mesonet'
+
+# Data Path
+DATA_DIR = "/path/to/FINAL_DATASET/Normal_Dataset/"
+
 # Hyperparameters (unified across models)
 BATCH_SIZE = 32
 LEARNING_RATE = 0.001
-EPOCHS = 50
 IMAGE_SIZE = (224, 224)
-
-# EfficientNetB0 & Xception
-DROPOUT_RATE = 0.2
-UNFREEZE_LAYERS = 0.30  # Unfreeze last 30%
-
-# MesoNet
-DROPOUT_RATE = 0.5  # Aggressive regularization
+DROPOUT_RATE = 0.5 if MODEL_NAME == 'mesonet' else 0.2
 ```
-
-### Callbacks
-
-1. **Early Stopping**: `monitor=val_loss, patience=10`
-2. **Model Checkpoint**: `monitor=val_auc, mode=max`
-3. **Learning Rate Scheduler**: `ReduceLROnPlateau(factor=0.2, patience=5)`
-4. **TensorBoard**: Real-time training visualization
 
 ### Training Strategy
 
-**Stage 1: Initial Training (10 epochs)**
-- Freeze early layers
-- Train custom classification head
-- Learning rate: 1e-3
+The `main_train.py` automatically handles two different strategies:
 
-**Stage 2: Fine-tuning (up to 50 epochs)**
-- Unfreeze last 30% layers
-- Continue training with reduced LR
-- Early stopping if no improvement
+**For MesoNet (From Scratch):**
+```python
+# All layers trainable from start
+model.trainable = True
+learning_rate = 0.001
+```
+
+**For EfficientNetB0 & Xception (Transfer Learning):**
+```python
+# Freeze bottom layers, unfreeze top 30 layers
+base_model.trainable = True
+for layer in base_model.layers[:-30]:
+    layer.trainable = False
+learning_rate = 1e-5  # Lower LR for fine-tuning
+```
+
+### Callbacks (Automatic)
+
+The system uses callbacks from `efficientnetb0.py` (generic for all models):
+
+1. **Early Stopping**: `monitor=val_loss, patience=10`
+2. **Model Checkpoint**: `monitor=val_auc, mode=max` (saves best model)
+3. **Learning Rate Scheduler**: `ReduceLROnPlateau(factor=0.2, patience=5)`
+4. **TensorBoard**: Real-time training visualization
+
+### Output Structure
+
+After training, `main_main.py` generates:
+```
+save/
+├── model/
+│   └── {model}_{dataset}_{timestamp}.keras
+├── history/
+│   └── {model}_{dataset}_{timestamp}.npy
+├── plot/
+│   ├── plot_auc_{timestamp}.png
+│   ├── plot_accuracy_{timestamp}.png
+│   ├── plot_loss_{timestamp}.png
+│   ├── confusion_matrix_{timestamp}.png
+│   ├── roc_curve_{timestamp}.png
+│   ├── precision_recall_curve_{timestamp}.png
+│   └── prediction_distribution_{timestamp}.png
+├── test/
+│   ├── test_metrics_{timestamp}.json
+│   ├── test_predictions_{timestamp}.npz
+│   └── classification_report_{timestamp}.txt
+└── logs/
+    └── fit_{timestamp}/  # TensorBoard logs
+```
 
 ---
 
 ## 📈 Evaluation
 
-### Metrics
+### Automatic Evaluation (via main_main.py)
 
-- **Accuracy**: Overall correctness
-- **AUC**: Threshold-independent discriminative power
-- **F1-Score**: Balance between precision and recall
-- **Precision**: Reliability of fake predictions
-- **Recall**: Ability to catch all fakes
-- **Loss**: Probability calibration quality
+The pipeline automatically:
+1. Loads test dataset from `DATA_DIR/test/`
+2. Runs model evaluation (loss, accuracy, AUC, precision, recall)
+3. Calculates F1-score
+4. Generates confusion matrix
+5. Creates ROC and PR curves
+6. Saves all metrics to JSON
 
-### Confusion Matrix Analysis
+All evaluation happens automatically when you run:
+```bash
+python main_main.py
+```
+
+### Custom Evaluation
+
+To evaluate a saved model on new test data:
 
 ```python
-# Generate confusion matrix and detailed metrics
-from sklearn.metrics import confusion_matrix, classification_report
+import tensorflow as tf
+from utils import data_loader, preprocessing, main_eval
 
-y_pred = model.predict(X_test)
-y_pred_classes = (y_pred > 0.5).astype(int)
+# Load model
+model = tf.keras.models.load_model('save/model/your_model.keras')
 
-cm = confusion_matrix(y_test, y_pred_classes)
-report = classification_report(y_test, y_pred_classes, 
-                               target_names=['Real', 'Fake'])
+# Load test data
+test_df = data_loader.scan_folder('path/to/test_data/')
+test_ds = preprocessing.create_ds(test_df, batch_size=32)
+
+# Evaluate
+results, tn, fp, fn, tp, fpr, fnr, f1_score, y_true, y_pred, y_pred_probs = \
+    main_eval.test_evaluate(model, test_ds, 'save/plot', 'custom_test', 'save/test')
 ```
+
+### Metrics Explanation
+
+| Metric | Formula | Interpretation |
+|--------|---------|----------------|
+| **Accuracy** | (TP+TN)/(TP+TN+FP+FN) | Overall correctness |
+| **AUC** | Area under ROC curve | Threshold-independent performance |
+| **Precision** | TP/(TP+FP) | Reliability of fake predictions |
+| **Recall** | TP/(TP+FN) | Ability to catch all fakes |
+| **F1-Score** | 2×(Precision×Recall)/(Precision+Recall) | Balanced performance |
+
+**Note:** In our implementation:
+- Label `0` = Real images
+- Label `1` = Fake images
+- TP = Correctly identified fakes
+- TN = Correctly identified reals
 
 ### Visualization
 
-```bash
-# Generate all evaluation plots
-python scripts/generate_plots.py \
-    --model_path models/efficientnetb0_best.keras \
-    --test_dir data/Normal_Dataset/test/ \
-    --output_dir results/plots/
-```
+The `utils/main_eval.py` automatically generates:
 
-Generates:
-- Training history (AUC, Loss, Accuracy)
-- ROC curves
-- Confusion matrices
-- Precision-Recall curves
-- Prediction distribution histograms
+1. **Training History Plots**
+   - AUC progression
+   - Accuracy progression  
+   - Loss progression
+
+2. **Test Evaluation Plots** (via `save.py`)
+   - Confusion matrix with error breakdown
+   - ROC curve (TPR vs FPR)
+   - Precision-Recall curve
+   - Prediction distribution histograms
 
 ---
 
